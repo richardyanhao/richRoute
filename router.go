@@ -44,12 +44,20 @@ func (r *route) addRoutRules(method string, path string, handler handler)  {
 
 func (r *route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	root := r.root[req.Method]
+	fmt.Printf("find %s \n", req.URL.Path)
 	segments := strings.Split(req.URL.Path, "/")[1:]
 	handler, err, p:= root.getHandler(segments)
 	if err != nil {
 		fmt.Print("get wrong")
 	}
+	if handler == nil{
+		fmt.Println("richard handler is empty")
+	}
+	if p == nil{
+		fmt.Println("richard params is empty")
+	}
 	handler(w, req, p)
+	return
 }
 
 

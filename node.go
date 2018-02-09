@@ -46,6 +46,7 @@ func (n *node) getHandler(segments []string) (handler, error, Params) {
 	for _, v := range n.children {
 		if v.path == segments[0] || v.wildChild {
 			pickNode = v
+			break
 		}
 	}
 	if pickNode == nil {
@@ -53,14 +54,15 @@ func (n *node) getHandler(segments []string) (handler, error, Params) {
 	}
 	if pickNode.wildChild {
 		p := Param{
-			Key: n.path[1:],
+			Key: pickNode.path[1:],
 			Value: segments[0],
 		}
+		ps = make(Params,1)
 		ps = append(ps, p)
 	}
 
-	if len(segments) == 0 {
-		return n.handler, nil, ps
+	if len(segments) == 1 {
+		return pickNode.handler, nil, ps
 	}
 
 	th, te, tp := pickNode.getHandler(segments[1:])
