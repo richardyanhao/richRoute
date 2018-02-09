@@ -89,38 +89,39 @@ func (n *node) insertSubRoot(segments []string, handler handler)  {
 
 func (n *node) getHandler(segments []string) (handler, error, Params) {
 	var ps Params
-	var p Param
-	if n.wildChild {
-		p = Param{
+	var pickNode *node
+	for _, v := range n.children {
+		if v.path == segments[0] || v.wildChild {
+			pickNode = v
+		}
+	}
+	if pickNode == nil {
+		return notfoundHandler, nil, ps
+	}
+	if pickNode.wildChild {
+		p := Param{
 			Key: n.path[1:],
 			Value: segments[0],
 		}
 		ps = append(ps, p)
 	}
-	if segments[0] != n.path && !n.wildChild{
-		return notfoundHandler, errors.New("not found"), ps
-	}
 
-	if len(segments) == 1 {
-		if n.handler == nil {
-			return notfoundHandler, nil, ps
-		}
+	if len(segments) == 0 {
 		return n.handler, nil, ps
 	}
-	var pickNode *node
-	for _, childNode := range n.children {
-		if childNode.path == segments[1] || childNode.wildChild{
-			pickNode = childNode
-		}
-	}
-	if pickNode == nil {
-		return notfoundHandler, errors.New("not found"), ps
-	}
+
 	th, te, tp := pickNode.getHandler(segments[1:])
 	if n.wildChild {
-		return th, te, append(tp, p)
+		return th, te, MergeSlice(ps, tp)
 	}
 	return th, te, tp
+}
+
+func MergeSlice(s1 Params, s2 Params) Params {
+	slice := make(Params, len(s1)+len(s2))
+	copy(slice, s1)
+	copy(slice[len(s1):], s2)
+	return slice
 }
 
 func notfoundHandler(w http.ResponseWriter, r *http.Request, _ Params) {
