@@ -26,16 +26,6 @@ func New() *route {
 
 type handler func(http.ResponseWriter, *http.Request, Params)
 
-type Param struct {
-	Key   string
-	Value string
-}
-
-type Params struct {
-	Key   string
-	Value string
-}
-
 func (r *route) GET(path string, handler handler)  {
 	r.addRoutRules("GET", path, handler)
 }
@@ -54,25 +44,19 @@ func (r *route) addRoutRules(method string, path string, handler handler)  {
 
 	selectRoot := r.root[method]
 	if selectRoot == nil {
-		selectRoot = &node{
-			path:      segments[0],
-			wildChild: segments[0][0] == ':',
-			handler: handler,
-		}
+		selectRoot = &node{}
 		r.root[method] = selectRoot
 	}
-	selectRoot.insertSubRoot(segments[1:], handler)
+	selectRoot.insertSubRoot(segments[0:], handler)
 }
 
 func (r *route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	root := r.root[req.Method]
 	segments := strings.Split(req.URL.Path, "/")[1:]
-	handler, err:= root.getHandler(segments)
-	//pickHandle()
-	if err != nil || handler == nil {
-		// return not found
+	handler, err, p:= root.getHandler(segments)
+	if err != nil {
 	}
-	handler(w, req, _)
+	handler(w, req, p)
 }
 
 func (n *node) insertSubRoot(segments []string, handler handler)  {
@@ -103,26 +87,40 @@ func (n *node) insertSubRoot(segments []string, handler handler)  {
 	pickNode.insertSubRoot(segments[1:], handler)
 }
 
-func (n *node) getHandler(segments []string) (handler, error) {
-	if segments[0] != n.path {
-		return notfoundHandler, errors.New("not found")
-	} else if len(segments) == 1 {
-		if n.handler == nil {
-			return notfoundHandler, nil
+func (n *node) getHandler(segments []string) (handler, error, Params) {
+	var ps Params
+	var p Param
+	if n.wildChild {
+		p = Param{
+			Key: n.path[1:],
+			Value: segments[0],
 		}
-		return n.handler, nil
+		ps = append(ps, p)
+	}
+	if segments[0] != n.path && !n.wildChild{
+		return notfoundHandler, errors.New("not found"), ps
+	}
+
+	if len(segments) == 1 {
+		if n.handler == nil {
+			return notfoundHandler, nil, ps
+		}
+		return n.handler, nil, ps
 	}
 	var pickNode *node
 	for _, childNode := range n.children {
-		if childNode.path == segments[1] {
+		if childNode.path == segments[1] || childNode.wildChild{
 			pickNode = childNode
 		}
 	}
 	if pickNode == nil {
-		return notfoundHandler, errors.New("not found")
+		return notfoundHandler, errors.New("not found"), ps
 	}
-
-	return notfoundHandler, errors.New("not found")
+	th, te, tp := pickNode.getHandler(segments[1:])
+	if n.wildChild {
+		return th, te, append(tp, p)
+	}
+	return th, te, tp
 }
 
 func notfoundHandler(w http.ResponseWriter, r *http.Request, _ Params) {
