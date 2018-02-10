@@ -18,6 +18,14 @@ func New() *route {
 
 type handler func(http.ResponseWriter, *http.Request, Params)
 
+type RichHandler interface {
+	Do(http.ResponseWriter, *http.Request, Params)
+}
+
+func (h handler) Do(w http.ResponseWriter, r *http.Request, p Params) {
+	h(w, r, p)
+}
+
 func (r *route) GET(path string, handler handler)  {
 	r.addRoutRules("GET", path, handler)
 }
@@ -56,7 +64,7 @@ func (r *route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if p == nil{
 		fmt.Println("richard params is empty")
 	}
-	handler(w, req, p)
+	handler.Do(w, req, p)
 	return
 }
 
