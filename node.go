@@ -9,10 +9,10 @@ type node struct {
 	path      string
 	wildChild bool
 	children  []*node
-	handler   handler
+	handler   RichHandler
 }
 
-func (n *node) insertSubRoot(segments []string, handler handler)  {
+func (n *node) insertSubRoot(segments []string, handler RichHandler)  {
 	if  len(segments) == 0{
 		return
 	}
@@ -24,7 +24,6 @@ func (n *node) insertSubRoot(segments []string, handler handler)  {
 		}
 		if v.wildChild && segments[0][0] == ':' {
 			fmt.Printf("it is another wild node, %s will be use as %s", segments[0], n.path)
-			// pickNode = v
 			return
 		}
 	}
@@ -40,7 +39,7 @@ func (n *node) insertSubRoot(segments []string, handler handler)  {
 	pickNode.insertSubRoot(segments[1:], handler)
 }
 
-func (n *node) getHandler(segments []string) (handler, error, Params) {
+func (n *node) getHandler(segments []string) (RichHandler, error, Params) {
 	var ps Params
 	var pickNode *node
 	for _, v := range n.children {
@@ -50,7 +49,7 @@ func (n *node) getHandler(segments []string) (handler, error, Params) {
 		}
 	}
 	if pickNode == nil {
-		return notfoundHandler, nil, ps
+		return notfound, nil, ps
 	}
 	if pickNode.wildChild {
 		p := Param{
@@ -79,9 +78,9 @@ func MergeSlice(s1 Params, s2 Params) Params {
 	return slice
 }
 
-func notfoundHandler(w http.ResponseWriter, r *http.Request, _ Params) {
+var notfound = Handler(func(w http.ResponseWriter, r *http.Request, _ Params) {
 	fmt.Fprint(w, "not found")
-}
+})
 
 func (n *node) ShowNode() {
 	fmt.Printf("path is : %s ,wild or not: %t, children: %+v \n", n.path, n.wildChild, n.children)
